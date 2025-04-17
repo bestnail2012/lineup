@@ -2,8 +2,8 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <title>카달로그 플립북 - 확대 보기 & 애니메이션</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>비에스트 카달로그</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://code.jquery.com/jquery-1.11.0.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/turn.js/3/turn.min.js"></script>
   <style>
@@ -20,45 +20,89 @@
       color: white;
       padding: 10px 20px;
     }
-    .navbar h1 {
+    .navbar-left {
       font-size: 20px;
-      margin: 0;
     }
-    .navbar a.shop-button {
-      background-color: white;
-      color: black;
-    }
-    .navbar a {
-      color: white;
-      text-decoration: none;
-      font-size: 16px;
-      background-color: #555;
-      padding: 6px 12px;
-      border-radius: 5px;
-      display: inline-flex;
+    .navbar-right {
+      display: flex;
+      gap: 10px;
       align-items: center;
     }
-    .navbar a:hover {
-      background-color: #777;
+    .navbar a {
+      background-color: white;
+      color: black;
+      text-decoration: none;
+      font-size: 16px;
+      padding: 6px 12px;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
     }
+    .navbar a img {
+      height: 24px;
+      margin-right: 8px;
+    }
+    .sound-toggle {
+      background-color: white;
+      font-size: 18px;
+      border: none;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 5px;
+    }
+
+    #intro {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: #fff;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #intro h1 {
+      font-size: 64px;
+      margin: 0;
+      font-weight: bold;
+    }
+
+    #intro h2 {
+      font-size: 40px;
+      margin: 10px 0 30px 0;
+    }
+
+    #intro button {
+      padding: 12px 24px;
+      font-size: 18px;
+      background-color: #333;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
     #flipbook {
       margin: 20px auto;
       box-shadow: 0 0 10px rgba(0,0,0,0.2);
     }
+
     .page {
       display: flex;
       justify-content: center;
       align-items: center;
       background: white;
-      transition: transform 0.4s ease-in-out;
     }
+
     .page img {
       width: 100%;
       height: 100%;
       object-fit: contain;
       background-color: white;
-      cursor: zoom-in;
     }
+
     .nav-buttons {
       text-align: center;
       position: fixed;
@@ -68,6 +112,7 @@
       z-index: 999;
       padding: 10px 0;
     }
+
     .nav-buttons button {
       font-size: 16px;
       padding: 10px 24px;
@@ -77,161 +122,82 @@
       border: none;
       border-radius: 25px;
       cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
       transition: background 0.3s;
     }
+
     .nav-buttons button:hover {
       background-color: #555;
     }
+
     .page-number {
       text-align: center;
       font-size: 14px;
       margin-top: 5px;
       color: #555;
     }
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0,0,0,0.8);
-    }
-    .modal-content {
-      margin: 5% auto;
-      display: block;
-      max-width: 90%;
-      max-height: 90%;
-    }
-    .close {
-      position: absolute;
-      top: 20px;
-      right: 30px;
-      color: white;
-      font-size: 35px;
-      font-weight: bold;
-      cursor: pointer;
-    }
   </style>
 </head>
 <body>
 
-  <div class="navbar">
-    <h1>📖 카달로그</h1>
-    <a href="https://www.bestnail.kr" target="_blank" class="shop-button"><img src="비에스트 로고(딱맞게).png" alt="로고" style="height: 24px; vertical-align: middle; margin-right: 8px;">쇼핑몰</a>
+  <!-- 인트로 화면 -->
+  <div id="intro">
+    <h1>B-EST</h1>
+    <h2>CATALOG</h2>
+    <button onclick="startCatalog()">펼쳐보기</button>
   </div>
 
+  <!-- 상단 메뉴 -->
+  <div class="navbar">
+    <div class="navbar-left">비에스트 카달로그</div>
+    <div class="navbar-right">
+      <button class="sound-toggle" id="soundToggle" onclick="toggleSound()">🔊</button>
+    </div>
+  </div>
+
+  <!-- 플립북 -->
   <div id="flipbook"></div>
 
+  <!-- 페이지 네비게이션 -->
   <div class="nav-buttons">
     <button id="prev">⬅ 이전</button>
     <span class="page-number" id="page-number">1 / 83</span>
     <button id="next">다음 ➡</button>
   </div>
 
-  <div id="myModal" class="modal">
-    <span class="close" onclick="document.getElementById('myModal').style.display='none'">&times;</span>
-    <img class="modal-content" id="modalImage">
-  </div>
+  <!-- 효과음 -->
+  <audio id="flipSound" src="page-flip.mp3" preload="auto"></audio>
 
   <script>
-    const pages = [
-"<div class='page'><img src='01.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='02.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='03.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='04.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='05.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='06.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='07.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='08.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='09.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='10.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='11.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='12.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='13.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='14.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='15.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='16.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='17.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='18.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='19.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='20.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='21.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='22.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='23.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='24.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='25.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='26.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='27.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='28.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='29.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='30.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='31.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='32.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='33.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='34.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='35.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='36.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='37.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='38.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='39.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='40.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='41.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='42.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='43.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='44.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='45.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='46.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='47.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='48.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='49.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='50.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='51.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='52.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='53.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='54.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='55.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='56.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='57.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='58.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='59.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='60.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='61.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='62.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='63.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='64.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='65.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='66.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='67.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='68.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='69.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='70.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='71.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='72.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='73.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='74.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='75.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='76.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='77.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='78.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='79.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='80.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='81.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='82.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>",
-"<div class='page'><img src='83.jpg' loading='lazy' onclick=\"showModal(this.src)\" /></div>"
-    ];
+    const totalPages = 83;
+    const pages = [];
+    let soundEnabled = true;
+
+    for (let i = 1; i <= totalPages; i++) {
+      const num = String(i).padStart(2, '0');
+      pages.push(`<div class='page'><img src='${num}.jpg' loading='lazy' /></div>`);
+    }
 
     function getDisplayMode() {
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       const isPortrait = window.innerHeight > window.innerWidth;
-      if (!isMobile) return 'double';
-      return isPortrait ? 'single' : 'double';
+      return isMobile && isPortrait ? 'single' : 'double';
     }
 
     function buildFlipbook() {
       $("#flipbook").html(pages.join("\n"));
+    }
+
+    function playFlipSound() {
+      const audio = document.getElementById("flipSound");
+      if (soundEnabled && audio) {
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+      }
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      document.getElementById("soundToggle").textContent = soundEnabled ? "🔊" : "🔇";
     }
 
     function initializeFlipbook() {
@@ -251,78 +217,81 @@
         autoCenter: true,
         display: displayMode,
         gradients: true,
+        duration: 1200,
+        elevation: 50,
         acceleration: true,
         turnCorners: "",
         when: {
-          turning: function(e, page, view) { e.stopPropagation(); }
+          turning: function(e, page, view) {
+            e.stopPropagation();
+          }
         }
       });
-    }
 
-    function waitForImages(callback) {
-      const imgs = $("#flipbook img");
-      let loaded = 0;
-      imgs.each(function () {
-        if (this.complete) {
-          loaded++;
-        } else {
-          $(this).on("load error", function () {
-            loaded++;
-            if (loaded === imgs.length) callback();
-          });
-        }
-      });
-      if (loaded === imgs.length) callback();
+      updateButtons();
     }
 
     function updateButtons() {
       const total = $("#flipbook").turn("pages");
       const current = $("#flipbook").turn("page");
-      const display = $("#flipbook").turn("display");
       const view = $("#flipbook").turn("view");
-      const pageText = display === 'single' ? `${current} / ${total}` : `${Math.min(...view)}-${Math.max(...view)} / ${total}`;
+      const text = view.length > 1
+        ? `${Math.min(...view)}-${Math.max(...view)} / ${total}`
+        : `${current} / ${total}`;
 
-      document.getElementById("page-number").textContent = pageText;
-      $("#prev").toggle(current > 1);
-      $("#next").toggle(current < total);
+      $("#page-number").text(text);
+      $("#prev").css("display", current > 1 ? "inline-block" : "none");
+      $("#next").css("display", current < total ? "inline-block" : "none");
     }
 
-    function showModal(src) {
-      const modal = document.getElementById("myModal");
-      const modalImg = document.getElementById("modalImage");
-      modalImg.src = src;
-      modal.style.display = "block";
+    function startCatalog() {
+      document.getElementById("intro").style.display = "none";
+      buildFlipbook();
+      initializeFlipbook();
     }
 
     $(document).ready(function () {
-      buildFlipbook();
-      waitForImages(() => {
-        initializeFlipbook();
-        updateButtons();
+      $("#prev").on("click", () => {
+        $("#flipbook").turn("previous");
+        playFlipSound();
       });
 
-      $("#prev").on("click touchstart", function () {
-        $("#flipbook").turn("previous");
-      });
-      $("#next").on("click touchstart", function () {
+      $("#next").on("click", () => {
         $("#flipbook").turn("next");
+        playFlipSound();
       });
-      $(window).on("resize orientationchange", function () {
-        initializeFlipbook();
-        updateButtons();
+
+      let lastWidth = window.innerWidth;
+
+      $(window).on("resize orientationchange", () => {
+        if (Math.abs(window.innerWidth - lastWidth) > 50) {
+          lastWidth = window.innerWidth;
+          initializeFlipbook();
+        }
       });
-      $("#flipbook").on("turned", function () {
+
+      $("#flipbook").on("turned", () => {
         updateButtons();
+        playFlipSound();
       });
 
       document.addEventListener("click", function (e) {
-        if (e.target.closest("button") || e.target.closest(".modal")) return;
-        const center = window.innerWidth / 2;
-        if (e.clientX > center) {
+        const flipbook = document.getElementById("flipbook");
+        if (!flipbook.contains(e.target)) return;
+
+        if ($("#flipbook").turn("animating")) return;
+
+        const rect = flipbook.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const mid = rect.width / 2;
+
+        if (x > mid) {
           $("#flipbook").turn("next");
         } else {
           $("#flipbook").turn("previous");
         }
+
+        playFlipSound();
       });
     });
   </script>
